@@ -18,7 +18,7 @@
 - Cloudflare tunnels
 - Tailscale Funnel
 - ngrok
-- Custom integrations (Warelay)
+- Extensible for custom integrations
 
 🎯 **Zero configuration**
 - Works out of the box
@@ -55,11 +55,11 @@ open dist/LocalServers.app
 🌐 3
 ├─ 📡 Servers Running (3)
 │  ├─ localhost:3000 (Next.js)
-│  ├─ localhost:3001 (Next.js)
-│  └─ localhost:4020 (VibeTunnel)
+│  ├─ localhost:8080 (Node.js)
+│  └─ localhost:5000 (Python)
 ├─ 🚇 Tunnels Active (2)
-│  ├─ → Cloudflare: audio.medigui.app
-│  └─ → Tailscale Funnel: mac-mini.tail*.ts.net
+│  ├─ → Cloudflare: myapp.example.com
+│  └─ → Tailscale Funnel: device.tailnet.ts.net
 └─ Refresh
 ```
 
@@ -100,7 +100,7 @@ MIT
 
 ## Author
 
-Created by [@ignaciogonzalezbautista](https://github.com/ignaciogonzalezbautista)
+Created by [@Nachx639](https://github.com/Nachx639)
 
 ---
 
