@@ -171,16 +171,36 @@ class LocalServersApp(rumps.App):
         """Identify server type and category"""
         command_lower = command.lower()
 
+        # Deno
+        if 'deno' in command_lower:
+            return ('Deno', 'deno')
+
+        # Bun
+        elif 'bun' in command_lower:
+            return ('Bun', 'bun')
+
         # Next.js (common dev ports)
-        if 'node' in command_lower:
+        elif 'node' in command_lower:
             if port in [3000, 3001]:
                 return ('Next.js', 'nextjs')
             else:
                 return ('Node.js', 'node')
 
-        # Python
+        # Python - Django/Flask
         elif 'python' in command_lower:
-            return ('Python', 'python')
+            if port == 8000:
+                return ('Django', 'django')
+            elif port == 5000:
+                return ('Flask', 'flask')
+            else:
+                return ('Python', 'python')
+
+        # PHP
+        elif 'php' in command_lower:
+            if port == 8000 or 'artisan' in command_lower:
+                return ('Laravel', 'laravel')
+            else:
+                return ('PHP', 'php')
 
         # Ruby/Rails
         elif 'ruby' in command_lower or 'rails' in command_lower:
@@ -195,7 +215,7 @@ class LocalServersApp(rumps.App):
             return ('Go', 'go')
 
         # Electron
-        elif 'electron' in command_lower or 'controlco' in command_lower:
+        elif 'electron' in command_lower:
             return ('Electron', 'electron')
 
         # Java
@@ -295,6 +315,63 @@ class LocalServersApp(rumps.App):
             pass
 
         return list(tunnels.values())
+
+    def detect_docker_containers(self):
+        """Detect running Docker containers with exposed ports"""
+        containers = []
+
+        try:
+            result = subprocess.run(
+                ['docker', 'ps', '--format', '{{.ID}}|{{.Names}}|{{.Ports}}|{{.Image}}'],
+                capture_output=True,
+                text=True,
+                timeout=3
+            )
+
+            if result.returncode != 0:
+                return containers
+
+            for line in result.stdout.strip().split('\n'):
+                if not line:
+                    continue
+
+                parts = line.split('|')
+                if len(parts) < 4:
+                    continue
+
+                container_id = parts[0][:12]
+                name = parts[1]
+                ports_str = parts[2]
+                image = parts[3]
+
+                # Parse ports
+                port_mappings = []
+                if ports_str:
+                    # Example: 0.0.0.0:3000->3000/tcp, 0.0.0.0:8080->80/tcp
+                    port_matches = re.findall(r'0\.0\.0\.0:(\d+)->(\d+)', ports_str)
+                    for host_port, container_port in port_matches:
+                        port_mappings.append({
+                            'host': host_port,
+                            'container': container_port
+                        })
+
+                if port_mappings:
+                    for mapping in port_mappings:
+                        containers.append({
+                            'name': name,
+                            'image': image.split(':')[0],  # Remove tag
+                            'host_port': mapping['host'],
+                            'container_port': mapping['container'],
+                            'id': container_id
+                        })
+
+        except FileNotFoundError:
+            # Docker not installed
+            pass
+        except Exception as e:
+            pass
+
+        return containers
 
     def detect_project_type(self, directory):
         """Auto-detect project type and suggest start command"""
@@ -541,9 +618,10 @@ class LocalServersApp(rumps.App):
         self.update_menu(None)
 
     def update_menu(self, sender):
-        """Update menu with servers and tunnels"""
+        """Update menu with servers, tunnels, and docker containers"""
         servers, categories_found = self.detect_servers()
         tunnels = self.detect_tunnels()
+        docker_containers = self.detect_docker_containers()
 
         menu_items = []
 
@@ -643,15 +721,56 @@ class LocalServersApp(rumps.App):
 
         menu_items.append("---")
 
+        # Docker containers section
+        if docker_containers:
+            menu_items.append(f"🐳 Docker ({len(docker_containers)})")
+            for container in docker_containers:
+                host_port = container['host_port']
+                container_port = container['container_port']
+                name = container['name']
+                image = container['image']
+                container_id = container['id']
+
+                docker_item = rumps.MenuItem(f"  🐳 localhost:{host_port} ({image})")
+
+                # Submenu with actions
+                open_item = rumps.MenuItem("Open in Browser", callback=lambda s, p=host_port: self.open_localhost(p))
+                copy_item = rumps.MenuItem("Copy URL", callback=self.copy_url)
+                copy_item._port = host_port
+
+                info_item = rumps.MenuItem(f"Container: {name}")
+                info_item.set_callback(None)  # Non-clickable info
+
+                port_info = rumps.MenuItem(f"Port mapping: {host_port}→{container_port}")
+                port_info.set_callback(None)
+
+                docker_item.add(open_item)
+                docker_item.add(copy_item)
+                docker_item.add("---")
+                docker_item.add(info_item)
+                docker_item.add(port_info)
+
+                menu_items.append(docker_item)
+        else:
+            menu_items.append("🐳 No containers running")
+
+        menu_items.append("---")
+
         # Dynamic filters based on categories found
         if categories_found:
             filters_menu = rumps.MenuItem("⚙️ Filters")
 
             # Map categories to display names
             category_names = {
+                'deno': 'Deno',
+                'bun': 'Bun',
                 'nextjs': 'Next.js',
                 'node': 'Node.js',
+                'django': 'Django',
+                'flask': 'Flask',
                 'python': 'Python',
+                'laravel': 'Laravel',
+                'php': 'PHP',
                 'ruby': 'Ruby',
                 'rust': 'Rust',
                 'go': 'Go',

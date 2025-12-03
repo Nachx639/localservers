@@ -10,9 +10,15 @@
 
 ✨ **Auto-detect local servers**
 - Scans all listening TCP ports (>1000)
-- Identifies server type (Next.js, Node.js, Python, etc.)
+- Identifies server type: Next.js, Node.js, Deno, Bun, Python, Django, Flask, PHP, Laravel, Ruby, Rust, Go, Java, and more
 - Click to open in browser
 - Updates every 5 seconds
+- Filter by language/framework
+
+🐳 **Docker container monitoring**
+- Detect running containers with exposed ports
+- Show port mappings (host→container)
+- Quick access to containerized apps
 
 🚇 **Detect active tunnels**
 - Cloudflare tunnels
